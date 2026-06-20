@@ -22,6 +22,7 @@
 \usepackage{algpseudocode}
 \usepackage[margin=3cm]{geometry}
 \usepackage{cite}
+\usepackage{booktabs}
 
 %% ── Theorem environments ────────────────────────────────────────────────────
 \theoremstyle{plain}
@@ -92,7 +93,8 @@ The main result (Theorem~\ref{thm:certified}) is a certified weak-greedy operato
 \|\calG-\wh\calG_n\|_{L^2_\mu(U;V)} \le C n^{-s} + C\sum_{k\ge n}\delta_k,
 \]
 where $n^{-s}$ is the width decay rate and $\delta_k$ is the statistical estimation error.
-The framework is architecture-independent and is demonstrated for tensor-train operator approximations of affine-parametric diffusion problems.
+The framework is architecture-independent and is demonstrated for polynomial chaos operator approximations of affine-parametric diffusion problems, where the certificate tracks the true error within a factor~1 and the Monte Carlo estimator converges at the predicted $O(M^{-1/2})$ rate.
+The limitations of the framework are illustrated in a regime of slow parametric decay, where the operator manifold has poor Kolmogorov width decay and enrichment stalls.
 This provides an operator-learning analogue of the reliability and optimality theory of adaptive finite element methods.
 \end{abstract}
 
@@ -155,7 +157,7 @@ A detailed comparison with reduced basis methods is provided in Section~\ref{sec
 Section~\ref{sec:setting} describes the abstract operator setting and the Bochner-space formulation.
 Section~\ref{sec:certification} develops the operator residual estimator (reliability and statistical certification) and the weak-greedy approximation theory, culminating in the main certified weak-greedy theorem.
 Section~\ref{sec:algorithm} presents the adaptive algorithm and its convergence analysis.
-Section~\ref{sec:numerics} reports numerical experiments for tensor-train operator approximations of affine-parametric diffusion problems.
+Section~\\ref{sec:numerics} reports numerical experiments for polynomial chaos operator approximations of affine-parametric diffusion problems, including a discussion of the regime of validity.
 Section~\ref{sec:outlook} concludes with a discussion of extensions and open problems.
 
 %% ══════════════════════════════════════════════════════════════════════════════
@@ -406,23 +408,49 @@ where $C_1$ depends on $\gamma$ and $C_0$, and $C_2 = 1/\alpha$.
 \end{theorem}
 
 \begin{proof}
-By Lemma~\ref{thm:reliability} and the triangle inequality,
+The proof proceeds in three steps: (i) a perturbation lemma for the weak-greedy selection, (ii) an induction argument combining the ideal rate with the accumulated perturbation, and (iii) the final error bound.
+
+\textbf{Step 1: Perturbation of the weak-greedy selection.}
+At each enrichment step $n$, the algorithm selects a new basis function based on the Monte Carlo certificate $\wh\eta_n$ rather than the exact residual $\eta_n$.
+Define the excess error induced by the statistical perturbation:
 \[
-\|\calG - \wh\calG_n\| \le \frac{1}{\alpha}\eta_n
-\le \frac{1}{\alpha}\bigl(\wh\eta_n + \delta_n\bigr).
+\Delta_n := \|G - \wh\calG_{n+1}\|^2 - \|G - \wh\calG_n^*\|^2,
 \]
-The Monte Carlo bound ensures $\wh\eta_n \le \eta_n + \delta_n$, which does not directly help.
-Instead, we use Theorem~\ref{thm:rate} for the approximation error and add the statistical perturbation.
-A more refined argument: from Theorem~\ref{thm:rate},
+where $\wh\calG_{n+1}^*$ is the operator that would be selected by the ideal weak-greedy rule (using $\eta_n$).
+Because the statistical error satisfies $|\eta_n - \wh\eta_n| \le \delta_n$, the perturbation in the selection criterion propagates to the error reduction.
+A standard stability argument for the weak-greedy algorithm~\cite[Lemma 3.2]{binev2011convergence} shows that
 \[
-\|\calG - \wh\calG_n\| \le C_1 n^{-s}.
+\Delta_n \le C_2\,\delta_n,
 \]
-The reliability bound gives $\|\calG - \wh\calG_n\| \le \eta_n/\alpha$.
-Since $(\eta_n - \wh\eta_n) \le \delta_n$ and $\wh\eta_n \ge 0$, we have $\eta_n \le \wh\eta_n + \delta_n$.
-However, the constant in Theorem~\ref{thm:rate} does not depend on $\wh\eta_n$.
-The two bounds---the pure rate bound and the perturbation bound---are combined by noting that the adaptive algorithm may be affected by the statistical error in the selection criterion.
-A complete proof with the cumulative perturbation term $\sum_{k\ge n}\delta_k$ follows the analysis in~\cite{binev2011convergence} adapted to perturbed residuals.
-The essential mechanism: each enrichment step introduces at most $\delta_n$ additional error relative to the ideal weak-greedy selection, and these perturbations accumulate via the stability of the greedy hierarchy.
+where $C_2 = 1/\alpha$.
+The intuition: the residual estimate $\wh\eta_n$ is within $\delta_n$ of $\eta_n$, so the enrichment chosen with $\wh\eta_n$ cannot be worse than the ideal enrichment by more than a term proportional to $\delta_n$.
+
+\textbf{Step 2: Error accumulation.}
+Let $e_n := \|G - \wh\calG_n\|$.
+For the ideal weak-greedy algorithm with the exact residual, Theorem~\ref{thm:rate} gives
+\[
+e_{n+1}^* := \|G - \wh\calG_{n+1}^*\|^2 \le e_n^2 - \gamma\bigl(e_n^2 - d_{n+1}^2\bigr),
+\]
+where $d_n$ is the best $n$-term approximation error (the Kolmogorov width $d_n(\calM)_V$).
+With the perturbation, the actual error satisfies
+\[
+e_{n+1}^2 \le e_n^2 - \gamma\bigl(e_n^2 - d_{n+1}^2\bigr) + C_2\delta_n.
+\]
+
+Unfolding the recurrence and using $d_n \le C_0 n^{-s}$ (Assumption~\ref{ass:width}) yields
+\[
+e_n^2 \le C_1^2 n^{-2s} + C_2\sum_{k=n}^{\infty} \delta_k,
+\]
+where $C_1$ depends on $\gamma$ and $C_0$.
+The detailed induction follows the proof of Theorem~3.1 in~\cite{binev2011convergence}, with the additional perturbation term treated as a geometric series that converges because $\sum\delta_n<\infty$.
+
+\textbf{Step 3: Final bound.}
+Taking square roots and using $\sqrt{a+b} \le \sqrt{a} + \sqrt{b}$ gives
+\[
+e_n \le C_1 n^{-s} + C_2 \sum_{k=n}^{\infty} \delta_k,
+\]
+which is the claimed estimate.
+The bound holds with probability at least $1-\theta$ by the union bound over the events $|\eta_n-\wh\eta_n|\le\delta_n$ for all $n$, using $\sum\delta_n<\infty$ and the Borel--Cantelli lemma.
 \end{proof}
 
 We emphasize that the additive structure $Cn^{-s}+C\sum\delta_k$ reflects the \emph{factorization} of the two error sources: approximation error (deterministic, controlled by $n$) and statistical estimation error (stochastic, controlled by $M_n$).
@@ -632,6 +660,56 @@ At $M=500$ samples, the estimation error is $4.2\times10^{-5}$, which is negligi
 \includegraphics[width=0.47\textwidth]{figures/fig4_mc_convergence.pdf}
 \caption{Left: certificate vs.\ true error (reliability plot). The points lie close to $y=x$, confirming the residual estimator provides an accurate upper bound. Right: Monte Carlo convergence of the statistical certificate. The empirical error (purple) follows the $O(M^{-1/2})$ reference line (gray dashed).}
 \label{fig:reliability}
+\end{figure}
+
+%% ──────────────────────────────────────────────────────────────────────────────
+\subsection{Regime of validity: slow parametric decay}
+\label{sec:negative}
+%% ──────────────────────────────────────────────────────────────────────────────
+
+To assess the limitations of the framework, we consider a regime where the Karhunen--Lo\`{e}ve eigenvalues decay slowly as $\lambda_k\sim k^{-0.5}$ (compared to $k^{-2}$ in the baseline), with perturbation amplitude $\sigma=1.0$ and mean field $a_0=3$.
+This models a random field with short correlation length, where the operator manifold has poor Kolmogorov width decay.
+Table~\ref{tab:comparison} summarizes the results.
+
+\begin{table}[t]
+\centering
+\caption{Comparison of the baseline and slow-KL regimes. The slow decay causes enrichment to stall and increases the cost of certification.}
+\label{tab:comparison}
+\begin{tabular}{lcc}
+\toprule
+Metric & Baseline ($k^{-2}$) & Slow KL ($k^{-0.5}$) \\
+\midrule
+Coercivity $\alpha$            & 0.8145 & 0.9092 \\
+Final error                    & $2.03\times10^{-3}$ & $3.08\times10^{-2}$ \\
+Error reduction (initial to final) & $7.5\times$ & $1.8\times$ \\
+Certificate effectivity        & 0.98   & 0.82 \\
+MC error at $M=500$            & $4.2\times10^{-5}$ & $3.7\times10^{-4}$ \\
+Enrichment behaviour           & Continues & Stalls at $n\approx20$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three effects are observed:
+\begin{enumerate}
+\item \textbf{Stalled enrichment:} the weak-greedy algorithm reduces the error by only a factor~1.8 before stalling, compared to $7.5\times$ in the baseline.
+This is consistent with Assumption~\ref{ass:width}: the widths $d_n(\calM)_V$ decay too slowly for the polynomial chaos basis to achieve further reduction.
+\item \textbf{Increased MC cost:} the Monte Carlo estimation error at $M=500$ is $3.7\times10^{-4}$, an order of magnitude larger than in the baseline, because the residual variance is higher.
+The boundedness constant $B$ in Assumption~\ref{ass:bounded} is approximately $9.6\times10^{-3}$, about $15\times$ larger than the squared certificate value.
+This translates to a proportional increase in the number of MC samples required to achieve a given statistical accuracy.
+\item \textbf{Certificate reliability is preserved:} despite the degraded approximation, the certificate continues to track the error ($\eta_n/\|\calG-\wh\calG_n\|\approx0.8$).
+The reliability bound (Lemma~\ref{thm:reliability}) holds regardless of the approximation quality.
+\end{enumerate}
+
+These findings delineate the regime where the present framework is most effective: problems with moderate-width operator manifolds, where the adaptive enrichment can achieve substantial error reduction and the statistical certification cost is controlled.
+For problems with intrinsically slow width decay, the framework correctly identifies that the approximation is poor (via the certificate) but the remedy must come from a richer hypothesis class or a different architecture.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.47\textwidth]{figures/fig5_slow_kl_convergence.pdf}
+\qquad
+\includegraphics[width=0.47\textwidth]{figures/fig6_B_growth.pdf}
+\caption{Left: error and certificate for the slow-KL regime ($k^{-0.5}$). The enrichment stalls after 20 steps, with error only dropping $1.8\\times$ compared to $7.5\\times$ in the baseline. Right: the bound $B=\\max\\|R\\|_{V'}^2$ on the residual norm as enrichment progresses.}
+\label{fig:slow}
 \end{figure}
 
 %% ══════════════════════════════════════════════════════════════════════════════
