@@ -268,9 +268,24 @@ Thus $\|e_n(y)\|_V \le \alpha^{-1}\|R_n(y)\|_{V'}$.
 Squaring and integrating with respect to $\mu$ yields the result.
 \end{proof}
 
-Lemma~\ref{thm:reliability} is the operator analogue of the standard AFEM reliability bound.
-It shows that the residual in $V'$ controls the error in $V$ uniformly in the parameter.
-The efficiency direction---a lower bound $\eta_n\le C\|\calG-\wh\calG_n\|$---requires additional regularity assumptions and is not needed for certification (an upper bound on the error suffices for a stopping criterion).
+\begin{remark}[Two-sided certificate]
+\label{rem:efficiency}
+The uniform boundedness assumption (Assumption~\ref{ass:boundedness}) immediately yields an efficiency bound:
+since $R_n(y)=A_y(e_n(y))$, we have
+\[
+\|R_n(y)\|_{V'} = \|A_y(e_n(y))\|_{V'} \le \beta\|e_n(y)\|_V,
+\]
+and therefore $\eta_n \le \beta\,\|\calG-\wh\calG_n\|_{L^2_\mu(U;V)}$.
+Combined with Lemma~\ref{thm:reliability},
+\[
+\frac{\alpha}{\beta}\,\eta_n \;\le\; \|\calG-\wh\calG_n\|_{L^2_\mu(U;V)} \;\le\; \frac{1}{\alpha}\,\eta_n.
+\]
+Thus the effectivity ratio $\eta_n/\|\calG-\wh\calG_n\|$ is bounded between $\alpha/\beta$ and $\beta/\alpha$.
+This is the operator analogue of the reliability--efficiency pair in AFEM, but unlike AFEM (where efficiency requires element-wise bubble functions and inverse estimates~\cite{verfurth1996review}), the operator-level efficiency follows directly from the boundedness assumption already made.
+\end{remark}
+
+Lemma~\ref{thm:reliability} and Remark~\ref{rem:efficiency} together show that the residual estimator provides a fully computable two-sided certificate.
+The simple structure of the constant $\beta/\alpha$ is a strength of the abstract operator framework.
 
 %% ──────────────────────────────────────────────────────────────────────────────
 \subsection{Weak-greedy operator approximation}
@@ -584,15 +599,34 @@ The present framework extends RB methodology in four key directions:
     which is necessary when the parametric structure does not admit an efficient
     offline-online decomposition (e.g.\ for neural network-based operators).
 
-  \item \textbf{Architecture-independence.}
+  \item \textbf{Certification is architecture-independent; enrichment is architecture-aware.}
     RB is intrinsically a linear subspace method: $V_n$ is spanned by PDE snapshots.
-    Our framework decouples the certification (expressed in terms of the abstract operator $\wh\calG_n$) from the architecture that parameterizes $\wh\calG_n$.
-    The same certification theory applies to tensor-train operators, DeepONets, sparse polynomial expansions, and neural operators.
+    Our framework separates the certification (expressed solely in terms of the abstract operator $\wh\calG_n$ and its residual) from the enrichment strategy (which requires a concrete parameterization).
+    The certification (reliability, efficiency, Monte Carlo estimation) holds for any $\wh\calG_n$ satisfying the abstract assumptions.
+    The enrichment step---weak-greedy selection over a candidate pool---is necessarily architecture-specific: for a polynomial chaos basis the candidates are multi-indices, for a tensor-train operator they are rank increments, for a neural operator they are new feature maps.
+    This split is a strength: the certification is universal, while the enrichment can be tailored to the architecture.
 
   \item \textbf{Weak-greedy enrichment.}
     RB employs classical (strong) greedy selection: $y_n^* = \argmax_{y\in\Xi}\Delta_{n-1}(y)$.
     Our framework uses weak-greedy enrichment, which is more flexible and permits approximate selection (e.g.\ via random search or gradient-based optimization).
 \end{enumerate}
+
+Figure~\ref{fig:rb_comparison} compares RB and CAOL on the benchmark problem of Section~\ref{sec:problem}.
+RB achieves slightly faster convergence: $4.9\times10^{-4}$ vs.\ $1.8\times10^{-3}$ at $n=20$, because the RB snapshots are full PDE solutions that capture optimal basis functions for the affine-parametric structure.
+However, RB requires a full PDE solve (quadratic cost in the FE dimension) for each of the $n$ greedy snapshots, while CAOL uses the same training solves once and learns the operator coefficients from data.
+The certificate quality is essentially identical (effectivity~0.9 for both methods), confirming that the CAOL framework achieves comparable certification despite using a weaker (data-driven) approximation.
+For non-affine parameter dependence, RB's offline-online decomposition breaks down and RB loses its computational advantage, whereas CAOL's MC certification remains applicable.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.47\textwidth]{figures/fig7_rb_vs_caol.pdf}
+\qquad
+\includegraphics[width=0.47\textwidth]{figures/fig8_effectivity_comparison.pdf}
+\caption{Comparison of RB and CAOL on the 2D affine diffusion benchmark.
+Left: convergence of error and certificate.\; Right: effectivity.
+RB converges slightly faster per $n$ because it uses full PDE snapshots, but CAOL achieves comparable certificate quality without needing $n$ separate PDE solves.}
+\label{fig:rb_comparison}
+\end{figure}
 
 We emphasize that the present paper does not claim to supersede RB methods.
 Rather, it provides a certification framework that complements RB in settings where linear subspace approximations are insufficient (slow width decay) and where statistical rather than deterministic certification suffices.
@@ -728,8 +762,9 @@ For specific architectures—tensor trains, DeepONets, sparse polynomial expansi
 This is the subject of a follow-up paper.
 
 \textbf{Efficiency.}
-The present framework provides only reliability (upper bound).
-An efficiency bound $\eta_n\le C\|\calG-\wh\calG_n\|$ under appropriate saturation assumptions would provide a fully computable two-sided estimate and is a natural next step.
+The present framework provides both reliability and efficiency (Remark~\ref{rem:efficiency}) as a two-sided certificate with constants $\alpha$ and $\beta$.
+The ratio $\beta/\alpha$ measures the sharpness of the certificate; for many parametric problems it remains bounded.
+Tighter estimates of $\alpha$ and $\beta$ for specific problem classes are a natural direction for future work.
 
 \textbf{Nonlinear operators.}
 The extension to monotone nonlinear operators preserves the residual-error relationship~\cite{zeidler1990nonlinear} and will be treated in a separate paper.
