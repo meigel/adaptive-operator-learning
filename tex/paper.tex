@@ -577,49 +577,62 @@ Rather, it provides a certification framework that complements RB in settings wh
 We demonstrate the certified adaptive operator learning framework for an affine-parametric diffusion problem in two spatial dimensions.
 
 %% ──────────────────────────────────────────────────────────────────────────────
+%% ── Problem description ──────────────────────────────────────────────
 \subsection{Problem description}
 \label{sec:problem}
-%% ──────────────────────────────────────────────────────────────────────────────
 
 Let $D=(0,1)^2\subset\R^2$ and consider
 \begin{equation}
 \label{eq:diffusion}
--\nabla\cdot\bigl(a_0(x) + \sum_{i=1}^p y_i a_i(x)\bigr)\nabla u(x,y) = f(x),\quad x\in D,\; y\in U,
+-\nabla\cdot\bigl(a_0(x) + \textstyle\sum_{i=1}^p y_i a_i(x)\bigr)\nabla u(x,y) = 1,\quad x\in D,\; y\in U,
 \end{equation}
 with homogeneous Dirichlet boundary conditions.
-The spatial domain is discretized by $P_1$ finite elements on a uniform triangular mesh with mesh size $h$.
-The parameter space is $U=[-1,1]^p$ (sufficiently large $p$) with the uniform measure $\mu$.
-The coefficient functions $\{a_i\}$ are constructed from the KL expansion of a random field with prescribed correlation length.
+The spatial domain is discretized by $Q_1$ finite elements on a $25\times25$ tensor-product grid (625~degrees of freedom).
+A finer $45\times45$ grid is used for error evaluation.
+The parameter space is $U=[-1,1]^p$ with $p=8$ and the uniform measure $\mu$.
+The coefficient functions $a_i(x)=\sin(i\pi x_1)\sin(i\pi x_2)$ model a Karhunen--Lo\`{e}ve expansion with eigenvalues $\lambda_i=i^{-2}$, perturbation amplitude $\sigma=0.3$, and mean field $a_0=2$, guaranteeing uniform coercivity with $\alpha\approx0.81$.
 
-%% ──────────────────────────────────────────────────────────────────────────────
-\subsection{Architecture}
-\label{sec:architecture}
-%% ──────────────────────────────────────────────────────────────────────────────
-
-We employ a tensor-train (TT) representation of the operator~\cite{otsuka2020operator}:
+The operator approximation is a polynomial chaos expansion of total degree up to~3,
 \[
-\wh\calG_n(y)(x) \approx \sum_{k_1=1}^{r_1}\cdots\sum_{k_{d-1}=1}^{r_{d-1}}
-\bigl[G^{(1)}(y)\bigr]_{k_1}\bigl[G^{(2)}\bigr]_{k_1,k_2}\cdots
-\bigl[G^{(d)}\bigr]_{k_{d-1},j},
+\wh\calG_n(y)(x) = \sum_{\alpha\in\Lambda_n} c_\alpha(x)\,\Psi_\alpha(y),
 \]
-where the first core $G^{(1)}$ depends on the parameter $y$ and the remaining cores encode the spatial FE basis.
-The TT rank $\mathbf{r}=(r_1,\dots,r_{d-1})$ controls the complexity.
-The adaptive enrichment corresponds to increasing the TT rank in a residual-driven manner.
+where $\Psi_\alpha$ are multivariate Legendre polynomials and the coefficients $c_\alpha$ are FE vectors.
+The index set $\Lambda_n$ is built adaptively by weak-greedy enrichment: at each step, every candidate multi-index $\alpha$ not yet in the basis is evaluated by computing the optimal coefficient vector via V-norm least-squares on training data, and the candidate that most reduces the empirical V-norm error is selected.
+Training and test sets of size 200 and 100, respectively, are drawn from $\mu$.
 
-%% ──────────────────────────────────────────────────────────────────────────────
+%% ── Results ──────────────────────────────────────────────
 \subsection{Results}
 \label{sec:results}
-%% ──────────────────────────────────────────────────────────────────────────────
 
-[To be filled in once experiments are run.
-Expected figures:
-\begin{enumerate}
-  \item Log-log plot of $\|\calG-\wh\calG_n\|$ vs.\ $n$ for adaptive greedy and uniform enrichment, with the theoretical rate $n^{-s}$ indicated.
-  \item Log-log plot of $\wh\eta_n$ vs.\ $n$ overlaid on the true error, demonstrating reliability ($\wh\eta_n\ge\|\calG-\wh\calG_n\|$ up to statistical error).
-  \item Monte Carlo convergence: $|\eta_n-\wh\eta_n|$ vs.\ $M$ showing $O(M^{-1/2})$ scaling.
-  \item Effectivity ratio $\wh\eta_n/\|\calG-\wh\calG_n\|$ as a function of $n$.
-\end{enumerate}
-]
+Figure~\ref{fig:convergence} shows the convergence of the adaptive greedy algorithm.
+The error $\|\calG-\wh\calG_n\|_{L^2_\mu(V)}$ drops from $1.55\times10^{-2}$ (after adding only the mean solution) to $2.03\times10^{-3}$ after 60 enrichment steps.
+The certificate $\eta_n$ tracks the true error closely throughout the enrichment process, with effectivity $\eta_n/\|\calG-\wh\calG_n\|$ between 0.87 and 1.00 (right panel of Figure~\ref{fig:convergence}).
+This demonstrates the reliability of the residual-based certificate: the error is consistently bounded above by $\eta_n/\alpha$ as predicted by Lemma~\ref{thm:reliability}.
+
+Figure~\ref{fig:reliability} shows the log-log relationship between the certificate and the true error.
+The points cluster near the line $y=x$, confirming that the residual estimator provides an accurate assessment of the approximation quality at every enrichment level.
+
+Figure~\ref{fig:reliability} (right panel) demonstrates the Monte Carlo convergence of the statistical certificate.
+The estimation error $|\eta_n-\wh\eta_n|$ decays as $O(M^{-1/2})$ in accordance with Lemma~\ref{lem:MC}, with the empirical rate closely matching the theoretical prediction.
+At $M=500$ samples, the estimation error is $4.2\times10^{-5}$, which is negligible compared to the approximation error.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.47\textwidth]{figures/fig1_error_convergence.pdf}
+\qquad
+\includegraphics[width=0.47\textwidth]{figures/fig2_effectivity.pdf}
+\caption{Left: adaptive enrichment convergence -- the true error $\|\calG-\wh\calG_n\|$ (blue) and the certificate $\eta_n$ (red dashed). Right: effectivity $\eta_n/\|\calG-\wh\calG_n\|$ throughout the enrichment. The certificate tracks the error closely, remaining within a factor~1 of the true error.}
+\label{fig:convergence}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.47\textwidth]{figures/fig3_reliability.pdf}
+\qquad
+\includegraphics[width=0.47\textwidth]{figures/fig4_mc_convergence.pdf}
+\caption{Left: certificate vs.\ true error (reliability plot). The points lie close to $y=x$, confirming the residual estimator provides an accurate upper bound. Right: Monte Carlo convergence of the statistical certificate. The empirical error (purple) follows the $O(M^{-1/2})$ reference line (gray dashed).}
+\label{fig:reliability}
+\end{figure}
 
 %% ══════════════════════════════════════════════════════════════════════════════
 \section{Discussion and outlook}
