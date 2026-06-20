@@ -1,0 +1,44 @@
+## LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.nlo
+*.nls
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+tex/*.pdf
+
+## Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+venv/
+env/
+
+## IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Project specific
+# results/ — track project briefs; large experiment outputs can be ignored per-file
